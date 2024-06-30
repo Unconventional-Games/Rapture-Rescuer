@@ -1,5 +1,6 @@
 import pygame
 import math
+import random
 
 # Initialize Pygame
 pygame.init()
@@ -15,6 +16,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
+GREEN = (0, 255, 0)
 
 # Player properties
 player_x = 400
@@ -24,6 +26,9 @@ player_angle = 0
 
 # Enemy properties
 enemies = []
+ENEMY_SPEED = 1
+MAX_ENEMIES = 5
+ENEMY_SPAWN_RATE = 120  # Frames between enemy spawns
 
 # Bullet properties
 bullets = []
@@ -52,10 +57,27 @@ def draw_tile(x, y, color):
     ]
     pygame.draw.polygon(window, color, points)
 
+def spawn_enemy():
+    side = random.choice(['top', 'bottom', 'left', 'right'])
+    if side == 'top':
+        x = random.randint(0, WIDTH)
+        y = 0
+    elif side == 'bottom':
+        x = random.randint(0, WIDTH)
+        y = HEIGHT
+    elif side == 'left':
+        x = 0
+        y = random.randint(0, HEIGHT)
+    else:
+        x = WIDTH
+        y = random.randint(0, HEIGHT)
+    enemies.append([x, y])
+
 # Game loop
 clock = pygame.time.Clock()
 running = True
 space_pressed = False
+spawn_counter = 0
 
 while running:
     for event in pygame.event.get():
@@ -102,6 +124,35 @@ while running:
         ray[1] += math.sin(ray[2]) * LIGHT_RAY_SPEED
         ray[3] -= 1  # Decrease duration
 
+    # Update enemy positions
+    for enemy in enemies:
+        dx = player_x - enemy[0]
+        dy = player_y - enemy[1]
+        dist = math.hypot(dx, dy)
+        if dist != 0:
+            enemy[0] += (dx / dist) * ENEMY_SPEED
+            enemy[1] += (dy / dist) * ENEMY_SPEED
+
+    # Spawn enemies
+    spawn_counter += 1
+    if spawn_counter >= ENEMY_SPAWN_RATE and len(enemies) < MAX_ENEMIES:
+        spawn_enemy()
+        spawn_counter = 0
+
+    # Check for collisions
+    for bullet in bullets[:]:
+        for enemy in enemies[:]:
+            if math.hypot(bullet[0] - enemy[0], bullet[1] - enemy[1]) < 15:
+                bullets.remove(bullet)
+                enemies.remove(enemy)
+                break
+
+    for ray in light_rays[:]:
+        for enemy in enemies[:]:
+            if math.hypot(ray[0] - enemy[0], ray[1] - enemy[1]) < 20:
+                enemies.remove(enemy)
+                break
+
     # Remove bullets and light rays that are off-screen or expired
     bullets = [b for b in bullets if 0 <= b[0] < WIDTH and 0 <= b[1] < HEIGHT]
     light_rays = [r for r in light_rays if 0 <= r[0] < WIDTH and 0 <= r[1] < HEIGHT and r[3] > 0]
@@ -126,6 +177,10 @@ while running:
         start_pos = (int(ray[0]), int(ray[1]))
         end_pos = (int(ray[0] + math.cos(ray[2]) * 50), int(ray[1] + math.sin(ray[2]) * 50))
         pygame.draw.line(window, YELLOW, start_pos, end_pos, 2)
+
+    # Draw enemies
+    for enemy in enemies:
+        pygame.draw.circle(window, GREEN, (int(enemy[0]), int(enemy[1])), 10)
 
     pygame.display.update()
     clock.tick(60)
