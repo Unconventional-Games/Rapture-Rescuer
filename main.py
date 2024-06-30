@@ -17,6 +17,7 @@ BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
 
 # Player properties
 player_x = 400
@@ -42,6 +43,14 @@ LIGHT_RAY_DURATION = 30  # frames
 # Isometric grid
 TILE_WIDTH = 64
 TILE_HEIGHT = 32
+
+# Score system
+score = 0
+BULLET_KILL_SCORE = 10
+LIGHT_RAY_KILL_SCORE = 20
+
+# Font for score display
+font = pygame.font.Font(None, 36)
 
 def iso_to_screen(x, y):
     screen_x = (x - y) * (TILE_WIDTH // 2)
@@ -145,12 +154,14 @@ while running:
             if math.hypot(bullet[0] - enemy[0], bullet[1] - enemy[1]) < 15:
                 bullets.remove(bullet)
                 enemies.remove(enemy)
+                score += BULLET_KILL_SCORE
                 break
 
     for ray in light_rays[:]:
         for enemy in enemies[:]:
             if math.hypot(ray[0] - enemy[0], ray[1] - enemy[1]) < 20:
                 enemies.remove(enemy)
+                score += LIGHT_RAY_KILL_SCORE
                 break
 
     # Remove bullets and light rays that are off-screen or expired
@@ -181,6 +192,11 @@ while running:
     # Draw enemies
     for enemy in enemies:
         pygame.draw.circle(window, GREEN, (int(enemy[0]), int(enemy[1])), 10)
+
+    # Draw score bar
+    pygame.draw.rect(window, BLUE, (10, 10, 200, 30))
+    score_text = font.render(f"Score: {score}", True, WHITE)
+    window.blit(score_text, (20, 15))
 
     pygame.display.update()
     clock.tick(60)
