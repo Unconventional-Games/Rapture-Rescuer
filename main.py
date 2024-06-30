@@ -18,18 +18,27 @@ RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+ORANGE = (255, 165, 0)
 
 # Player properties
 player_x = 400
 player_y = 300
 player_speed = 3
 player_angle = 0
+PLAYER_RADIUS = 10
 
 # Enemy properties
 enemies = []
 ENEMY_SPEED = 1
 MAX_ENEMIES = 5
 ENEMY_SPAWN_RATE = 120  # Frames between enemy spawns
+ENEMY_RADIUS = 10
+
+# Hostage properties
+hostages = []
+MAX_HOSTAGES = 3
+HOSTAGE_SPAWN_RATE = 300  # Frames between hostage spawns
+HOSTAGE_RADIUS = 8
 
 # Bullet properties
 bullets = []
@@ -48,6 +57,7 @@ TILE_HEIGHT = 32
 score = 0
 BULLET_KILL_SCORE = 10
 LIGHT_RAY_KILL_SCORE = 20
+HOSTAGE_RESCUE_SCORE = 50
 
 # Font for score display
 font = pygame.font.Font(None, 36)
@@ -82,11 +92,17 @@ def spawn_enemy():
         y = random.randint(0, HEIGHT)
     enemies.append([x, y])
 
+def spawn_hostage():
+    x = random.randint(HOSTAGE_RADIUS, WIDTH - HOSTAGE_RADIUS)
+    y = random.randint(HOSTAGE_RADIUS, HEIGHT - HOSTAGE_RADIUS)
+    hostages.append([x, y])
+
 # Game loop
 clock = pygame.time.Clock()
 running = True
 space_pressed = False
 spawn_counter = 0
+hostage_spawn_counter = 0
 
 while running:
     for event in pygame.event.get():
@@ -115,6 +131,10 @@ while running:
         player_x -= player_speed
     if keys[pygame.K_d]:
         player_x += player_speed
+
+    # Keep player within screen bounds
+    player_x = max(PLAYER_RADIUS, min(WIDTH - PLAYER_RADIUS, player_x))
+    player_y = max(PLAYER_RADIUS, min(HEIGHT - PLAYER_RADIUS, player_y))
 
     # Shoot light ray
     if space_pressed:
@@ -148,10 +168,16 @@ while running:
         spawn_enemy()
         spawn_counter = 0
 
+    # Spawn hostages
+    hostage_spawn_counter += 1
+    if hostage_spawn_counter >= HOSTAGE_SPAWN_RATE and len(hostages) < MAX_HOSTAGES:
+        spawn_hostage()
+        hostage_spawn_counter = 0
+
     # Check for collisions
     for bullet in bullets[:]:
         for enemy in enemies[:]:
-            if math.hypot(bullet[0] - enemy[0], bullet[1] - enemy[1]) < 15:
+            if math.hypot(bullet[0] - enemy[0], bullet[1] - enemy[1]) < ENEMY_RADIUS + 3:
                 bullets.remove(bullet)
                 enemies.remove(enemy)
                 score += BULLET_KILL_SCORE
@@ -159,10 +185,16 @@ while running:
 
     for ray in light_rays[:]:
         for enemy in enemies[:]:
-            if math.hypot(ray[0] - enemy[0], ray[1] - enemy[1]) < 20:
+            if math.hypot(ray[0] - enemy[0], ray[1] - enemy[1]) < ENEMY_RADIUS + 5:
                 enemies.remove(enemy)
                 score += LIGHT_RAY_KILL_SCORE
                 break
+
+    # Check for hostage rescue
+    for hostage in hostages[:]:
+        if math.hypot(player_x - hostage[0], player_y - hostage[1]) < PLAYER_RADIUS + HOSTAGE_RADIUS:
+            hostages.remove(hostage)
+            score += HOSTAGE_RESCUE_SCORE
 
     # Remove bullets and light rays that are off-screen or expired
     bullets = [b for b in bullets if 0 <= b[0] < WIDTH and 0 <= b[1] < HEIGHT]
@@ -177,7 +209,7 @@ while running:
             draw_tile(x, y, (50, 50, 50))
     
     # Draw player
-    pygame.draw.circle(window, WHITE, (int(player_x), int(player_y)), 10)
+    pygame.draw.circle(window, WHITE, (int(player_x), int(player_y)), PLAYER_RADIUS)
     
     # Draw bullets
     for bullet in bullets:
@@ -191,7 +223,11 @@ while running:
 
     # Draw enemies
     for enemy in enemies:
-        pygame.draw.circle(window, GREEN, (int(enemy[0]), int(enemy[1])), 10)
+        pygame.draw.circle(window, GREEN, (int(enemy[0]), int(enemy[1])), ENEMY_RADIUS)
+
+    # Draw hostages
+    for hostage in hostages:
+        pygame.draw.circle(window, ORANGE, (int(hostage[0]), int(hostage[1])), HOSTAGE_RADIUS)
 
     # Draw score bar
     pygame.draw.rect(window, BLUE, (10, 10, 200, 30))
